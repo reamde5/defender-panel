@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEFENDER Panel — Administración Remota</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-particles" id="particles"></div>
+    <div class="login-card animate-fadeIn">
+      <div class="login-logo">
+        <div class="shield-icon">🛡️</div>
+        <h1>DEFENDER<span class="accent">Panel</span></h1>
+        <p class="login-subtitle">Administración Remota Segura</p>
+      </div>
+      <form id="login-form" autocomplete="off">
+        <div class="input-group">
+          <span class="input-icon">👤</span>
+          <input type="text" id="login-user" placeholder="Usuario" required autocomplete="off">
+        </div>
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="login-pass" placeholder="Contraseña" required autocomplete="off">
+        </div>
+        <button type="submit" class="btn-login" id="btn-login">
+          <span>Iniciar Sesión</span>
+          <div class="btn-loader" id="login-loader"></div>
+        </button>
+        <p id="login-error" class="login-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN DASHBOARD ==================== -->
+  <div id="dashboard" class="dashboard hidden">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="shield-sm">🛡️</span>
+          <span class="logo-text">DEFENDER</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="devices" onclick="switchView('devices')">
+          <span class="nav-icon">💻</span>
+          <span class="nav-label">Dispositivos</span>
+          <span class="nav-badge" id="device-count">0</span>
+        </a>
+        <a href="#" class="nav-item" data-view="terminal" onclick="switchView('terminal')">
+          <span class="nav-icon">⌨️</span>
+          <span class="nav-label">Terminal</span>
+        </a>
+        <a href="#" class="nav-item" data-view="screen" onclick="switchView('screen')">
+          <span class="nav-icon">🖥️</span>
+          <span class="nav-label">View Screen</span>
+        </a>
+        <a href="#" class="nav-item" data-view="files" onclick="switchView('files')">
+          <span class="nav-icon">📁</span>
+          <span class="nav-label">Archivos</span>
+        </a>
+        <a href="#" class="nav-item" data-view="controls" onclick="switchView('controls')">
+          <span class="nav-icon">🎮</span>
+          <span class="nav-label">Controles</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <span class="user-avatar">👤</span>
+          <span class="user-name" id="current-user">admin</span>
+        </div>
+        <button class="btn-logout" onclick="logout()">Salir</button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+          <h2 id="page-title">Dispositivos Conectados</h2>
+        </div>
+        <div class="topbar-right">
+          <div class="status-indicator">
+            <span class="status-dot online"></span>
+            <span id="online-count">0</span> online
+          </div>
+          <div class="topbar-clock" id="topbar-clock"></div>
+        </div>
+      </header>
+
+      <!-- DEVICE SELECTOR BAR (shown when a view other than devices is active) -->
+      <div class="device-selector-bar hidden" id="device-selector-bar">
+        <label>Dispositivo:</label>
+        <select id="device-selector" onchange="selectDeviceFromDropdown()">
+          <option value="">— Seleccionar dispositivo —</option>
+        </select>
+        <span class="selected-device-info" id="selected-device-info"></span>
+      </div>
+
+      <!-- VIEW: DEVICES -->
+      <section id="view-devices" class="view active">
+        <div class="devices-grid" id="devices-grid">
+          <div class="no-devices animate-fadeIn" id="no-devices">
+            <div class="no-devices-icon">📡</div>
+            <h3>Esperando dispositivos...</h3>
+            <p>Ejecuta el agente en los dispositivos que deseas controlar</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: TERMINAL -->
+      <section id="view-terminal" class="view">
+        <div class="terminal-container animate-slideUp">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            </div>
+            <span class="terminal-title" id="terminal-title">Terminal — Sin dispositivo</span>
+            <button class="btn-sm btn-clear" onclick="clearTerminal()">🗑️ Limpiar</button>
+          </div>
+          <div class="terminal-body" id="terminal-body">
+            <div class="terminal-welcome">
+              <pre>
+╔═══════════════════════════════════════════════╗
+║  DEFENDER Panel — Terminal Remota             ║
+║  Selecciona un dispositivo para empezar       ║
+╚═══════════════════════════════════════════════╝
+              </pre>
+            </div>
+          </div>
+          <div class="terminal-input-bar">
+            <span class="terminal-prompt">$</span>
+            <input type="text" id="terminal-input" placeholder="Escribe un comando..." onkeydown="handleTerminalKey(event)" disabled>
+            <button class="btn-send" onclick="sendTerminalCommand()" id="btn-send-cmd" disabled>
+              Enviar ➜
+            </button>
+          </div>
+          <div class="quick-commands">
+            <span class="quick-label">Rápidos:</span>
+            <button class="btn-quick" onclick="quickCmd('sysinfo')">📊 SysInfo</button>
+            <button class="btn-quick" onclick="quickCmd('processes')">⚙️ Procesos</button>
+            <button class="btn-quick" onclick="quickCmd('screenshot')">📸 Screenshot</button>
+            <button class="btn-quick" onclick="quickCmd('pwd')">📂 PWD</button>
+            <button class="btn-quick" onclick="quickCmd('ls')">📋 LS</button>
+            <button class="btn-quick" onclick="quickCmd('password')">🔐 Passwords</button>
+            <button class="btn-quick" onclick="quickCmd('history')">🌐 History</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: SCREEN -->
+      <section id="view-screen" class="view">
+        <div class="screen-container animate-slideUp">
+          <div class="screen-toolbar">
+            <button class="btn-screen-action btn-start-stream" id="btn-start-stream" onclick="toggleScreenStream()">
+              ▶️ Iniciar View Screen
+            </button>
+            <button class="btn-screen-action" onclick="requestScreenshot()">📸 Capturar Screenshot</button>
+            <div class="stream-info">
+              <span id="stream-status" class="stream-badge offline">⏹ Detenido</span>
+              <span id="stream-fps">0 FPS</span>
+            </div>
+            <div class="stream-quality">
+              <label>Calidad:</label>
+              <input type="range" id="stream-quality" min="10" max="80" value="40" oninput="updateQualityLabel()">
+              <span id="quality-label">40%</span>
+            </div>
+          </div>
+          <div class="screen-viewer" id="screen-viewer">
+            <div class="screen-placeholder" id="screen-placeholder">
+              <div class="screen-placeholder-icon">🖥️</div>
+              <p>Haz clic en "Iniciar View Screen" para ver la pantalla en tiempo real</p>
+            </div>
+            <img id="screen-image" class="screen-image hidden" alt="Screen">
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: FILES -->
+      <section id="view-files" class="view">
+        <div class="files-container animate-slideUp">
+          <div class="files-toolbar">
+            <div class="files-path">
+              <span class="path-icon">📂</span>
+              <input type="text" id="files-path-input" placeholder="Ruta..." onkeydown="if(event.key==='Enter')navigatePath()">
+              <button class="btn-sm" onclick="navigatePath()">Ir</button>
+            </div>
+            <div class="files-actions">
+              <button class="btn-sm" onclick="requestLs()">🔄 Refrescar</button>
+              <label class="btn-sm btn-upload-label">
+                📤 Subir archivo
+                <input type="file" id="file-upload-input" style="display:none" onchange="uploadFile()">
+              </label>
+            </div>
+          </div>
+          <div class="files-list" id="files-list">
+            <div class="files-placeholder">Selecciona un dispositivo y navega sus archivos</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: CONTROLS -->
+      <section id="view-controls" class="view">
+        <div class="controls-grid animate-slideUp">
+          <!-- System Info Card -->
+          <div class="control-card" id="card-sysinfo">
+            <div class="card-header">
+              <span class="card-icon">📊</span>
+              <h3>Información del Sistema</h3>
+            </div>
+            <div class="card-body" id="sysinfo-content">
+              <p class="placeholder-text">Selecciona un dispositivo</p>
+            </div>
+            <div class="card-footer">
+              <button class="btn-action" onclick="sendCmd('sysinfo')">🔄 Actualizar</button>
+            </div>
+          </div>
+
+          <!-- Message Card -->
+          <div class="control-card">
+            <div class="card-header">
+              <span class="card-icon">💬</span>
+              <h3>Enviar Mensaje</h3>
+            </div>
+            <div class="card-body">
+              <input type="text" id="msg-input" class="control-input" placeholder="Escribe el mensaje...">
+            </div>
+            <div class="card-footer">
+              <button class="btn-action" onclick="sendCmd('msg', document.getElementById('msg-input').value)">📤 Enviar</button>
+            </div>
+          </div>
+
+          <!-- Mouse Control -->
+          <div class="control-card">
+            <div class="card-header">
+              <span class="card-icon">🖱️</span>
+              <h3>Control de Ratón</h3>
+            </div>
+            <div class="card-body">
+              <div class="mouse-grid">
+                <input type="number" id="mouse-x" class="control-input-sm" placeholder="X">
+                <input type="number" id="mouse-y" class="control-input-sm" placeholder="Y">
+              </div>
+            </div>
+            <div class="card-footer">
+              <button class="btn-action" onclick="sendMouseMove()">↗️ Mover</button>
+              <button class="btn-action" onclick="sendCmd('click')">🖱️ Click</button>
+            </div>
+          </div>
+
+          <!-- Keyboard Control -->
+          <div class="control-card">
+            <div class="card-header">
+              <span class="card-icon">⌨️</span>
+              <h3>Teclado</h3>
+            </div>
+            <div class="card-body">
+              <input type="text" id="type-input" class="control-input" placeholder="Texto a escribir...">
+              <input type="text" id="key-input" class="control-input" placeholder="Tecla (Enter, F5, etc.)" style="margin-top:8px">
+            </div>
+            <div class="card-footer">
+              <button class="btn-action" onclick="sendCmd('type', document.getElementById('type-input').value)">✍️ Escribir</button>
+              <button class="btn-action" onclick="sendCmd('keypress', document.getElementById('key-input').value)">⌨️ Tecla</button>
+            </div>
+          </div>
+
+          <!-- Wallpaper -->
+          <div class="control-card">
+            <div class="card-header">
+              <span class="card-icon">🖼️</span>
+              <h3>Wallpaper</h3>
+            </div>
+            <div class="card-body">
+              <label class="btn-action btn-upload-label" style="display:inline-block;cursor:pointer">
+                📎 Seleccionar imagen
+                <input type="file" id="wallpaper-input" accept="image/*" style="display:none" onchange="sendWallpaper()">
+              </label>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="control-card card-danger">
+            <div class="card-header">
+              <span class="card-icon">⚠️</span>
+              <h3>Zona Peligrosa</h3>
+            </div>
+            <div class="card-body">
+              <div class="danger-buttons">
+                <button class="btn-danger" onclick="confirmDanger('shutdown', '¿APAGAR el dispositivo?')">⏻ Apagar</button>
+                <button class="btn-danger" onclick="confirmDanger('restart', '¿REINICIAR el dispositivo?')">🔄 Reiniciar</button>
+                <button class="btn-danger" onclick="confirmDanger('logout', '¿CERRAR SESIÓN?')">🚪 Logout</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- NOTIFICATION TOAST -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- SCREENSHOT MODAL -->
+  <div id="screenshot-modal" class="modal hidden" onclick="closeModal(event)">
+    <div class="modal-content">
+      <button class="modal-close" onclick="document.getElementById('screenshot-modal').classList.add('hidden')">✕</button>
+      <img id="modal-screenshot-img" class="modal-image">
+      <div class="modal-footer">
+        <button class="btn-action" onclick="downloadModalImage()">💾 Descargar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
