@@ -10,7 +10,7 @@ const { initDB, prepare, saveDB } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 50e6 });
+const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 200e6 });
 
 const PORT = process.env.PORT || 3000;
 
@@ -176,6 +176,10 @@ function handleAgentConnection(socket, agentSockets, panelSockets, screenStreams
 
   socket.on('file-data', (data) => {
     for (const [, p] of panelSockets) p.socket.emit('file-data', { deviceId, ...data });
+  });
+
+  socket.on('file-chunk', (data) => {
+    for (const [, p] of panelSockets) p.socket.emit('file-chunk', { deviceId, ...data });
   });
 
   socket.on('processes-result', (data) => {

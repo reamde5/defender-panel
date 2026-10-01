@@ -160,6 +160,26 @@ function connectSocket() {
       downloadBase64File(data.filename, data.data, data.mimetype);
     }
   });
+
+  socket.on('file-chunk', (data) => {
+    if (data.deviceId !== selectedDeviceId) return;
+    // Collect chunks
+    if (!window._fileTransfers) window._fileTransfers = {};
+    const t = window._fileTransfers;
+    if (!t[data.transferId]) {
+      t[data.transferId] = { filename: data.filename, chunks: [], total: data.totalChunks, totalSize: data.totalSize };
+      showToast(`📥 Descargando ${data.filename} (${formatSize(data.totalSize)})...`, 'info');
+    }
+    t[data.transferId].chunks[data.chunk] = data.data;
+    
+    // Check if complete
+    const received = t[data.transferId].chunks.filter(Boolean).length;
+    if (received === data.totalChunks) {
+      const fullBase64 = t[data.transferId].chunks.join('');
+      downloadBase64File(data.filename, fullBase64, 'application/octet-stream');
+      delete t[data.transferId];
+    }
+  });
 }
 
 // =============================================
