@@ -547,6 +547,9 @@ function renderFileList(data) {
     return a.name.localeCompare(b.name);
   });
 
+  // Store file paths in a global map to avoid backslash issues in HTML
+  window._filePaths = {};
+
   // Parent directory
   let html = '';
   if (data.currentPath && data.currentPath !== '/') {
@@ -556,20 +559,31 @@ function renderFileList(data) {
     </div>`;
   }
 
-  html += items.map(item => `
-    <div class="file-item" ondblclick="${item.isDir ? `navigateToDir('${escapeAttr(item.name)}')` : ''}">
+  html += items.map((item, idx) => {
+    const key = 'f' + idx;
+    window._filePaths[key] = { path: item.fullPath || item.name, name: item.name, isDir: item.isDir };
+    return `
+    <div class="file-item" ondblclick="${item.isDir ? `navDir('${key}')` : ''}">
       <span class="file-icon">${item.isDir ? '📁' : getFileIcon(item.name)}</span>
       <span class="file-name">${escapeHtml(item.name)}</span>
       <span class="file-size">${item.isDir ? '' : formatSize(item.size)}</span>
       ${!item.isDir ? `
-        <button class="file-action" onclick="downloadFile('${escapeAttr(item.fullPath || item.name)}')">
+        <button class="file-action" onclick="dlFile('${key}')">
           📥 Descargar
         </button>
       ` : ''}
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   list.innerHTML = html;
+}
+
+function navDir(key) {
+  const info = window._filePaths[key];
+  if (!info) return;
+  const pathInput = document.getElementById('files-path-input');
+  pathInput.value = info.path;
+  requestLs();
 }
 
 function navigateToDir(dir) {
@@ -585,9 +599,16 @@ function navigateToDir(dir) {
   requestLs();
 }
 
+function dlFile(key) {
+  const info = window._filePaths[key];
+  if (!info) return;
+  downloadFile(info.path);
+}
+
 function downloadFile(filepath) {
+  if (!selectedDeviceId) return showToast('Selecciona un dispositivo', 'warning');
   socket.emit('request-download', { deviceId: selectedDeviceId, filepath });
-  showToast('📥 Descargando archivo...', 'info');
+  showToast('📥 Descargando: ' + filepath.split(/[/\\]/).pop(), 'info');
 }
 
 function uploadFile() {
