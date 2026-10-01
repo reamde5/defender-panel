@@ -161,10 +161,14 @@
             <button class="btn-screen-action btn-start-stream" id="btn-start-stream" onclick="toggleScreenStream()">
               ▶️ Iniciar View Screen
             </button>
+            <button class="btn-screen-action" id="btn-remote-control" onclick="toggleRemoteControl()" style="background:linear-gradient(135deg,#555,#333);">
+              🖱️ Control Remoto: OFF
+            </button>
             <button class="btn-screen-action" onclick="requestScreenshot()">📸 Capturar Screenshot</button>
             <div class="stream-info">
               <span id="stream-status" class="stream-badge offline">⏹ Detenido</span>
               <span id="stream-fps">0 FPS</span>
+              <span id="remote-control-badge" class="stream-badge offline" style="display:none">🖱️ CONTROL</span>
             </div>
             <div class="stream-quality">
               <label>Calidad:</label>
@@ -172,12 +176,22 @@
               <span id="quality-label">40%</span>
             </div>
           </div>
-          <div class="screen-viewer" id="screen-viewer">
+          <div class="screen-viewer" id="screen-viewer" tabindex="0"
+               onmousedown="handleScreenMouse(event,'down')"
+               onmouseup="handleScreenMouse(event,'up')"
+               onmousemove="handleScreenMouseMove(event)"
+               oncontextmenu="handleScreenRightClick(event)"
+               ondblclick="handleScreenDblClick(event)"
+               onwheel="handleScreenWheel(event)">
             <div class="screen-placeholder" id="screen-placeholder">
               <div class="screen-placeholder-icon">🖥️</div>
               <p>Haz clic en "Iniciar View Screen" para ver la pantalla en tiempo real</p>
             </div>
-            <img id="screen-image" class="screen-image hidden" alt="Screen">
+            <img id="screen-image" class="screen-image hidden" alt="Screen" draggable="false"
+                 style="pointer-events:none;">
+          </div>
+          <div id="remote-control-hint" style="display:none; text-align:center; padding:8px; color:#ffa500; font-size:13px;">
+            ⌨️ Haz clic en la pantalla y escribe — el teclado se envía al PC remoto | ESC para desactivar control
           </div>
         </div>
       </section>

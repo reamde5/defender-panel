@@ -539,6 +539,140 @@ function updateQualityLabel() {
 }
 
 // =============================================
+// REMOTE CONTROL
+// =============================================
+let remoteControlEnabled = false;
+let remoteScreenWidth = 1920;
+let remoteScreenHeight = 1080;
+let lastMouseSendTime = 0;
+
+function toggleRemoteControl() {
+  remoteControlEnabled = !remoteControlEnabled;
+  const btn = document.getElementById('btn-remote-control');
+  const badge = document.getElementById('remote-control-badge');
+  const hint = document.getElementById('remote-control-hint');
+
+  if (remoteControlEnabled) {
+    btn.textContent = '🖱️ Control Remoto: ON';
+    btn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+    badge.style.display = 'inline-block';
+    badge.className = 'stream-badge live';
+    hint.style.display = 'block';
+    document.getElementById('screen-viewer').style.cursor = 'crosshair';
+    // Focus the viewer for keyboard
+    document.getElementById('screen-viewer').focus();
+    showToast('🖱️ Control remoto ACTIVADO — clic y teclado habilitados', 'success');
+  } else {
+    btn.textContent = '🖱️ Control Remoto: OFF';
+    btn.style.background = 'linear-gradient(135deg, #555, #333)';
+    badge.style.display = 'none';
+    hint.style.display = 'none';
+    document.getElementById('screen-viewer').style.cursor = 'default';
+    showToast('🖱️ Control remoto DESACTIVADO', 'info');
+  }
+}
+
+function getScreenCoords(event) {
+  const img = document.getElementById('screen-image');
+  if (!img || img.classList.contains('hidden')) return null;
+  const rect = img.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  // Map to real screen coordinates
+  const realX = Math.round((x / rect.width) * remoteScreenWidth);
+  const realY = Math.round((y / rect.height) * remoteScreenHeight);
+  if (realX < 0 || realY < 0 || realX > remoteScreenWidth || realY > remoteScreenHeight) return null;
+  return { x: realX, y: realY };
+}
+
+function handleScreenMouse(event, type) {
+  if (!remoteControlEnabled || !selectedDeviceId || !isStreaming) return;
+  event.preventDefault();
+  const coords = getScreenCoords(event);
+  if (!coords) return;
+  
+  if (type === 'down' && event.button === 0) {
+    socket.emit('remote-input', { deviceId: selectedDeviceId, type: 'click', x: coords.x, y: coords.y, button: 'left' });
+  }
+}
+
+function handleScreenRightClick(event) {
+  if (!remoteControlEnabled || !selectedDeviceId || !isStreaming) return;
+  event.preventDefault();
+  const coords = getScreenCoords(event);
+  if (!coords) return;
+  socket.emit('remote-input', { deviceId: selectedDeviceId, type: 'click', x: coords.x, y: coords.y, button: 'right' });
+}
+
+function handleScreenDblClick(event) {
+  if (!remoteControlEnabled || !selectedDeviceId || !isStreaming) return;
+  event.preventDefault();
+  const coords = getScreenCoords(event);
+  if (!coords) return;
+  socket.emit('remote-input', { deviceId: selectedDeviceId, type: 'dblclick', x: coords.x, y: coords.y });
+}
+
+function handleScreenMouseMove(event) {
+  if (!remoteControlEnabled || !selectedDeviceId || !isStreaming) return;
+  // Throttle to max 10 moves per second
+  const now = Date.now();
+  if (now - lastMouseSendTime < 100) return;
+  lastMouseSendTime = now;
+  
+  if (event.buttons === 1) { // Only send move while dragging
+    const coords = getScreenCoords(event);
+    if (!coords) return;
+    socket.emit('remote-input', { deviceId: selectedDeviceId, type: 'move', x: coords.x, y: coords.y });
+  }
+}
+
+function handleScreenWheel(event) {
+  if (!remoteControlEnabled || !selectedDeviceId || !isStreaming) return;
+  event.preventDefault();
+  const direction = event.deltaY > 0 ? 'down' : 'up';
+  socket.emit('remote-input', { deviceId: selectedDeviceId, type: 'scroll', direction, amount: 3 });
+}
+
+// Keyboard handler for screen viewer
+document.addEventListener('keydown', (event) => {
+  if (!remoteControlEnabled || !selectedDeviceId || !isStreaming) return;
+  const viewer = document.getElementById('screen-viewer');
+  if (document.activeElement !== viewer && !viewer.contains(document.activeElement)) return;
+
+  event.preventDefault();
+
+  if (event.key === 'Escape') {
+    toggleRemoteControl();
+    return;
+  }
+
+  // Map special keys to SendKeys format
+  const keyMap = {
+    'Enter': '{ENTER}', 'Backspace': '{BS}', 'Delete': '{DEL}',
+    'Tab': '{TAB}', 'ArrowUp': '{UP}', 'ArrowDown': '{DOWN}',
+    'ArrowLeft': '{LEFT}', 'ArrowRight': '{RIGHT}',
+    'Home': '{HOME}', 'End': '{END}', 'PageUp': '{PGUP}', 'PageDown': '{PGDN}',
+    'F1': '{F1}', 'F2': '{F2}', 'F3': '{F3}', 'F4': '{F4}',
+    'F5': '{F5}', 'F6': '{F6}', 'F7': '{F7}', 'F8': '{F8}',
+    'F9': '{F9}', 'F10': '{F10}', 'F11': '{F11}', 'F12': '{F12}',
+  };
+
+  let key = keyMap[event.key] || null;
+
+  if (!key && event.key.length === 1) {
+    // Regular character
+    key = event.key;
+    // Handle modifier keys
+    if (event.ctrlKey) key = '^' + key;
+    if (event.altKey) key = '%' + key;
+  }
+
+  if (key) {
+    socket.emit('remote-input', { deviceId: selectedDeviceId, type: 'key', key });
+  }
+});
+
+// =============================================
 // FILE EXPLORER
 // =============================================
 function requestLs() {
